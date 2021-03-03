@@ -1,12 +1,11 @@
-# This program demos how to connect to Milvus vector database, 
+# This program demos how to connect to Milvus vector database,
 # create a vector collection,
-# insert 10 vectors, 
+# insert 10 vectors,
 # and execute a vector similarity search.
 
 import random
 import numpy as np
-
-from milvus import Milvus, IndexType, MetricType, Status
+from milvus_cloud import Milvus, IndexType, MetricType, Status
 
 # Milvus server IP address and port.
 # You may need to change _HOST and _PORT accordingly.
