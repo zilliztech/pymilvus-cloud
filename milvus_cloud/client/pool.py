@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 import logging
 import os
@@ -113,8 +113,8 @@ class ConnectionPool:
             if not _is_version_match(version):
                 raise VersionError(
                     "Version of python SDK(v{}) not match that of server v{}, excepted is v{}".format(__version__,
-                                                                                                  version,
-                                                                                                  support_versions))
+                                                                                                      version,
+                                                                                                      support_versions))
         conn.close()
 
     def _inc_used(self):
@@ -254,6 +254,7 @@ class SingletonThreadPool:
 
     def release(self, conn):
         pass
+
 
 class SingleConnectionPool:
     def __init__(self, uri, pool_size=10, wait_timeout=30, try_connect=True, **kwargs):

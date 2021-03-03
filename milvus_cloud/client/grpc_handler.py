@@ -6,7 +6,7 @@ import ujson
 
 import grpc
 from grpc._cython import cygrpc
-
+import collections as col
 from ..grpc_gen import milvus_pb2_grpc
 from ..grpc_gen import milvus_pb2 as grpc_types
 from .abstract import ConnectIntf, CollectionSchema, IndexParam, PartitionParam, TopKQueryResult, HEntitySet
@@ -41,17 +41,20 @@ def error_handler(*rargs):
                 return func(self, *args, **kwargs)
             except grpc.FutureTimeoutError as e:
                 record_dict["RPC timeout"] = str(datetime.datetime.now())
-                LOGGER.error("\nAddr [{}] {}\nRequest timeout: {}\n\t{}".format(self.server_address, func.__name__, e, record_dict))
+                LOGGER.error("\nAddr [{}] {}\nRequest timeout: {}\n\t{}".format(
+                    self.server_address, func.__name__, e, record_dict))
                 status = Status(Status.UNEXPECTED_ERROR, message='Request timeout')
                 return status if not rargs else tuple([status]) + rargs
             except grpc.RpcError as e:
                 record_dict["RPC error"] = str(datetime.datetime.now())
-                LOGGER.error("\nAddr [{}] {}\nRpc error: {}\n\t{}".format(self.server_address, func.__name__, e, record_dict))
+                LOGGER.error("\nAddr [{}] {}\nRpc error: {}\n\t{}".format(
+                    self.server_address, func.__name__, e, record_dict))
                 status = Status(e.code(), message='Error occurred. {}'.format(e.details()))
                 return status if not rargs else tuple([status]) + rargs
             except Exception as e:
                 record_dict["Exception"] = str(datetime.datetime.now())
-                LOGGER.error("\nAddr [{}] {}\nExcepted error: {}\n\t{}".format(self.server_address, func.__name__, e, record_dict))
+                LOGGER.error("\nAddr [{}] {}\nExcepted error: {}\n\t{}".format(
+                    self.server_address, func.__name__, e, record_dict))
                 raise e
 
         return handler
@@ -104,15 +107,76 @@ def set_uri(host, port, uri):
 #         ft.__del__()
 #         channel.__del__()
 
+class _ClientCallDetails(
+        col.namedtuple(
+            '_ClientCallDetails',
+            ('method', 'timeout', 'metadata', 'credentials')),
+        grpc.ClientCallDetails):
+    pass
+
+
+class _ClientInterceptor(grpc.UnaryUnaryClientInterceptor,
+                         grpc.UnaryStreamClientInterceptor,
+                         grpc.StreamUnaryClientInterceptor,
+                         grpc.StreamStreamClientInterceptor):
+    def __init__(self, interceptor_function):
+        self._fn = interceptor_function
+
+    def intercept_unary_unary(self, continuation, client_call_details, request):
+        new_details, new_request_iterator, postprocess = self._fn(
+            client_call_details, iter((request,)), False, False)
+        response = continuation(new_details, next(new_request_iterator))
+        return postprocess(response) if postprocess else response
+
+    def intercept_unary_stream(self, continuation, client_call_details,
+                               request):
+        new_details, new_request_iterator, postprocess = self._fn(
+            client_call_details, iter((request,)), False, True)
+        response_it = continuation(new_details, next(new_request_iterator))
+        return postprocess(response_it) if postprocess else response_it
+
+    def intercept_stream_unary(self, continuation, client_call_details,
+                               request_iterator):
+        new_details, new_request_iterator, postprocess = self._fn(
+            client_call_details, request_iterator, True, False)
+        response = continuation(new_details, new_request_iterator)
+        return postprocess(response) if postprocess else response
+
+    def intercept_stream_stream(self, continuation, client_call_details,
+                                request_iterator):
+        new_details, new_request_iterator, postprocess = self._fn(
+            client_call_details, request_iterator, True, True)
+        response_it = continuation(new_details, new_request_iterator)
+        return postprocess(response_it) if postprocess else response_it
+
+
+def header_adder_interceptor(header, value):
+    def intercept_call(client_call_details, request_iterator,
+                       request_streaming, response_streaming):
+        metadata = []
+        if client_call_details.metadata is not None:
+            metadata = list(client_call_details.metadata)
+        metadata.append((
+            header,
+            value,
+        ))
+        client_call_details = _ClientCallDetails(
+            client_call_details.method, client_call_details.timeout, metadata,
+            client_call_details.credentials)
+        return client_call_details, request_iterator, None
+
+    return _ClientInterceptor(intercept_call)
+
 
 class GrpcHandler(ConnectIntf):
-    def __init__(self, host=None, port=None, pre_ping=True, **kwargs):
+    def __init__(self, host=None, port=None, token=None, pre_ping=True, **kwargs):
         self._channel = None
         self._stub = None
         self._uri = None
         self.status = None
         self._connected = False
         self._pre_ping = pre_ping
+        self._token = token
         # if self._pre_ping:
         self._max_retry = kwargs.get("max_retry", 3)
 
@@ -156,10 +220,11 @@ class GrpcHandler(ConnectIntf):
             options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                      (cygrpc.ChannelArgKey.max_receive_message_length, -1),
                      ('grpc.enable_retries', 1),
-                     ('grpc.keepalive_time_ms', 55000)]
-                     # (b'grpc.enable_http_proxy', 0)]
+                     ('grpc.keepalive_time_ms', 55000)],
+            # (b'grpc.enable_http_proxy', 0)]
         )
-        self._stub = milvus_pb2_grpc.MilvusServiceStub(self._channel)
+        self._intercept_channel = grpc.intercept_channel(self._channel, header_adder_interceptor("token", self._token),)
+        self._stub = milvus_pb2_grpc.MilvusServiceStub(self._intercept_channel)
         self.status = Status()
 
     def _pre_request(self):
@@ -405,7 +470,7 @@ class GrpcHandler(ConnectIntf):
         response = rf.result()
         if response.status.error_code == 0:
             return Status(message='Show collections successfully!'), \
-                   [name for name in response.collection_names if len(name) > 0]
+                [name for name in response.collection_names if len(name) > 0]
         return Status(response.status.error_code, message=response.status.reason), []
 
     @error_handler(None)
@@ -623,9 +688,9 @@ class GrpcHandler(ConnectIntf):
 
         if status.error_code == 0:
             return Status(message="Successfully"), \
-                   IndexParam(index_param.collection_name,
-                              index_param.index_type,
-                              index_param.extra_params[0].value)
+                IndexParam(index_param.collection_name,
+                           index_param.index_type,
+                           index_param.extra_params[0].value)
 
         return Status(code=status.error_code, message=status.reason), None
 
@@ -772,7 +837,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-               self._hybrid_search_hook.handle_response(response)
+            self._hybrid_search_hook.handle_response(response)
 
     @error_handler(None)
     def search_hybrid(self, collection_name, vector_params, dsl, partition_tags=None, params=None, **kwargs):
@@ -784,7 +849,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-               self._hybrid_search_hook.handle_response(response)
+            self._hybrid_search_hook.handle_response(response)
 
     @error_handler(None)
     def search_by_ids(self, collection_name, ids, top_k, partition_tags=None, params=None, timeout=None, **kwargs):
@@ -807,7 +872,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-               self._search_hook.handle_response(response)
+            self._search_hook.handle_response(response)
 
     @error_handler(None)
     def search_in_files(self, collection_name, file_ids, query_records, top_k, params, timeout=None, **kwargs):
@@ -868,7 +933,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-               self._search_file_hook.handle_response(response)
+            self._search_file_hook.handle_response(response)
 
     @error_handler()
     def delete_by_id(self, collection_name, id_array, timeout=None):
