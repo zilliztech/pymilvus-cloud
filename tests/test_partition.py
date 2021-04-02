@@ -1,6 +1,6 @@
 import pytest
 
-from milvus import ParamError
+from milvus_cloud import ParamError
 
 
 class TestCreatePartition:

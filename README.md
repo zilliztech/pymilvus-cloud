@@ -1,11 +1,11 @@
 
 # Milvus Python SDK
 
-[![version](https://img.shields.io/pypi/v/pymilvus.svg?color=blue)](https://pypi.org/project/pymilvus/)
-[![Downloads](https://pepy.tech/badge/pymilvus)](https://pepy.tech/project/pymilvus)
-[![Downloads](https://pepy.tech/badge/pymilvus/month)](https://pepy.tech/project/pymilvus/month)
-[![Downloads](https://pepy.tech/badge/pymilvus/week)](https://pepy.tech/project/pymilvus/week)
-[![license](https://img.shields.io/hexpm/l/plug.svg?color=green)](https://github.com/milvus-io/pymilvus/blob/master/LICENSE)
+[![version](https://img.shields.io/pypi/v/pymilvus-cloud.svg?color=blue)](https://pypi.org/project/pymilvus-cloud/)
+[![Downloads](https://pepy.tech/badge/pymilvus-cloud)](https://pepy.tech/project/pymilvus-cloud)
+[![Downloads](https://pepy.tech/badge/pymilvus-cloud/month)](https://pepy.tech/project/pymilvus-cloud/month)
+[![Downloads](https://pepy.tech/badge/pymilvus-cloud/week)](https://pepy.tech/project/pymilvus-cloud/week)
+[![license](https://img.shields.io/hexpm/l/plug.svg?color=green)](https://github.com/milvus-io/pymilvus-cloud/blob/master/LICENSE)
 
 Python SDK for [Milvus](https://github.com/milvus-io/milvus). To contribute code to this project, please read our [contribution guidelines](https://github.com/milvus-io/milvus/blob/master/CONTRIBUTING.md) first.
 
@@ -17,7 +17,7 @@ For detailed SDK documentation, refer to [API Documentation](https://milvus-io.g
 - [New features](#new-features)
 - [Get started](#get-started)
     - [Prerequisites](#prerequisites)
-    - [Install pymilvus](#install-pymilvus)
+    - [Install pymilvus-cloud](#install-pymilvus-cloud)
     - [Examples](#examples)
 - [Basic operations](#basic-operations)
 - [Connect to the Milvus server](#connect-to-the-milvus-server)
@@ -48,19 +48,19 @@ For detailed SDK documentation, refer to [API Documentation](https://milvus-io.g
 
 ### Prerequisites
 
-pymilvus only supports Python 3.6 or higher.
+pymilvus-cloud only supports Python 3.6 or higher.
 
-### Install pymilvus
+### Install pymilvus-cloud
 
-You can install pymilvus via `pip` or `pip3` for Python3:
+You can install pymilvus-cloud via `pip` or `pip3` for Python3:
 
 ```shell
-$ pip3 install pymilvus
+$ pip3 install pymilvus-cloud
 ```
 
-The following collection shows Milvus versions and recommended pymilvus versions:
+The following collection shows Milvus versions and recommended pymilvus-cloud versions:
 
-|Milvus version| Recommended pymilvus version |
+|Milvus version| Recommended pymilvus-cloud version |
 |:-----:|:-----:|
 | 0.10.6 | 0.4.0 |
 | 0.10.5 | 0.2.15, 0.4.0 |
@@ -81,16 +81,16 @@ The following collection shows Milvus versions and recommended pymilvus versions
 | 0.3.0 | 0.1.13 |
 
 
-You can install a specific version of pymilvus by:
+You can install a specific version of pymilvus-cloud by:
 
 ```shell
-$ pip install pymilvus==0.4.0
+$ pip install pymilvus-cloud==0.4.0
 ```
 
-You can upgrade `pymilvus` to the latest version by:
+You can upgrade `pymilvus-cloud` to the latest version by:
 
 ```shell
-$ pip install --upgrade pymilvus
+$ pip install --upgrade pymilvus-cloud
 ```
 
 ### Examples
@@ -101,24 +101,24 @@ Refer to [examples](/examples) for more example programs.
 
 ## Connect to the Milvus server
 
-1. Import pymilvus.
+1. Import pymilvus-cloud.
 
    ```python
-   # Import pymilvus
-   >>> from milvus import Milvus, IndexType, MetricType, Status
+   # Import pymilvus-cloud
+   >>> from milvus-cloud import Milvus, IndexType, MetricType, Status
    ```
 
 2. Create a client to Milvus server by using one of the following methods:
 
    ```python
    # Connect to Milvus server
-   >>> client = Milvus(host='localhost', port='19530')
+   >>> client = Milvus(host='endpoint', port='443', token="access_token")
    ```
 
    > Note: In the above code, default values are used for `host` and `port` parameters. Feel free to change them to the IP address and port you set for Milvus server.
    
    ```python
-   >>> client = Milvus(uri='tcp://localhost:19530')
+   >>> client = Milvus(uri='tcp://endpoint:443')
    ```
 
 ## Create/Drop collections

@@ -1,7 +1,7 @@
 import random
 import time
 import pytest
-from milvus.client.utils import merge_results
+from milvus_cloud.client.utils import merge_results
 
 
 @pytest.mark.skip

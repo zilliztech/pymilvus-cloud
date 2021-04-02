@@ -1,7 +1,7 @@
 import pytest
 
-from milvus import IndexType
-from milvus import ParamError
+from milvus_cloud import IndexType
+from milvus_cloud import ParamError
 
 
 class TestCreateIndex:

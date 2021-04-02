@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from milvus import ParamError
+from milvus_cloud import ParamError
 
 dim = 128
 
