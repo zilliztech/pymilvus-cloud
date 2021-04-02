@@ -6,12 +6,14 @@
 import random
 import numpy as np
 from milvus_cloud import Milvus, IndexType, MetricType, Status
+import os
 
 # Milvus server IP address and port.
-# You may need to change _HOST and _PORT accordingly.
-_HOST = '127.0.0.1'
-_PORT = '19530'  # default value
-# _PORT = '19121'  # default http value
+# You may need to change _HOST _TOKEN and CaFilePath accordingly.
+os.environ["tls_path"] = "CaFilePath"
+_HOST = 'endpoint'
+_TOKEN = 'access_token'
+_PORT = '443'  # default value
 
 # Vector parameters
 _DIM = 8  # dimension of vector
@@ -23,7 +25,7 @@ def main():
     # Specify server addr when create milvus client instance
     # milvus client instance maintain a connection pool, param
     # `pool_size` specify the max connection num.
-    milvus = Milvus(_HOST, _PORT)
+    milvus = Milvus(_HOST, _PORT, _TOKEN)
 
     # Create collection demo_collection if it dosen't exist.
     collection_name = 'example_collection_'

@@ -2,8 +2,8 @@ import threading
 
 import pytest
 
-from milvus import Milvus, NotConnectError, VersionError
-from milvus.client.pool import ConnectionPool
+from milvus_cloud import Milvus, NotConnectError, VersionError
+from milvus_cloud.client.pool import ConnectionPool
 
 
 class TestPool:

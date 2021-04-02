@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 import logging
 import threading
 import ujson
-
+import os
 import grpc
 from grpc._cython import cygrpc
 import collections as col
@@ -108,10 +108,10 @@ def set_uri(host, port, uri):
 #         channel.__del__()
 
 class _ClientCallDetails(
-        col.namedtuple(
-            '_ClientCallDetails',
-            ('method', 'timeout', 'metadata', 'credentials')),
-        grpc.ClientCallDetails):
+    col.namedtuple(
+        '_ClientCallDetails',
+        ('method', 'timeout', 'metadata', 'credentials')),
+    grpc.ClientCallDetails):
     pass
 
 
@@ -207,6 +207,12 @@ class GrpcHandler(ConnectIntf):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
+    def _read_tls(self):
+        ca_file = os.getenv("tls_path")
+        with open(ca_file, 'rb') as f:
+            credentials = f.read()
+            return credentials
+
     def _setup(self, host, port, uri, pre_ping=False):
         """
         Create a grpc channel and a stub
@@ -215,15 +221,26 @@ class GrpcHandler(ConnectIntf):
 
         """
         self._uri = set_uri(host, port, uri)
-        self._channel = grpc.insecure_channel(
+        # self._channel = grpc.insecure_channel(
+        #     self._uri,
+        #     options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
+        #              (cygrpc.ChannelArgKey.max_receive_message_length, -1),
+        #              ('grpc.enable_retries', 1),
+        #              ('grpc.keepalive_time_ms', 55000)],
+        #     # (b'grpc.enable_http_proxy', 0)]
+        # )
+        channel = grpc.ssl_channel_credentials(self._read_tls())
+        self._channel = grpc.secure_channel(
             self._uri,
+            channel,
             options=[(cygrpc.ChannelArgKey.max_send_message_length, -1),
                      (cygrpc.ChannelArgKey.max_receive_message_length, -1),
                      ('grpc.enable_retries', 1),
                      ('grpc.keepalive_time_ms', 55000)],
             # (b'grpc.enable_http_proxy', 0)]
         )
-        self._intercept_channel = grpc.intercept_channel(self._channel, header_adder_interceptor("token", self._token),)
+        self._intercept_channel = grpc.intercept_channel(self._channel,
+                                                         header_adder_interceptor("token", self._token), )
         self._stub = milvus_pb2_grpc.MilvusServiceStub(self._intercept_channel)
         self.status = Status()
 
@@ -470,7 +487,7 @@ class GrpcHandler(ConnectIntf):
         response = rf.result()
         if response.status.error_code == 0:
             return Status(message='Show collections successfully!'), \
-                [name for name in response.collection_names if len(name) > 0]
+                   [name for name in response.collection_names if len(name) > 0]
         return Status(response.status.error_code, message=response.status.reason), []
 
     @error_handler(None)
@@ -688,9 +705,9 @@ class GrpcHandler(ConnectIntf):
 
         if status.error_code == 0:
             return Status(message="Successfully"), \
-                IndexParam(index_param.collection_name,
-                           index_param.index_type,
-                           index_param.extra_params[0].value)
+                   IndexParam(index_param.collection_name,
+                              index_param.index_type,
+                              index_param.extra_params[0].value)
 
         return Status(code=status.error_code, message=status.reason), None
 
@@ -837,7 +854,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-            self._hybrid_search_hook.handle_response(response)
+               self._hybrid_search_hook.handle_response(response)
 
     @error_handler(None)
     def search_hybrid(self, collection_name, vector_params, dsl, partition_tags=None, params=None, **kwargs):
@@ -849,7 +866,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-            self._hybrid_search_hook.handle_response(response)
+               self._hybrid_search_hook.handle_response(response)
 
     @error_handler(None)
     def search_by_ids(self, collection_name, ids, top_k, partition_tags=None, params=None, timeout=None, **kwargs):
@@ -872,7 +889,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-            self._search_hook.handle_response(response)
+               self._search_hook.handle_response(response)
 
     @error_handler(None)
     def search_in_files(self, collection_name, file_ids, query_records, top_k, params, timeout=None, **kwargs):
@@ -933,7 +950,7 @@ class GrpcHandler(ConnectIntf):
                           message=response.status.reason), []
 
         return Status(message='Search vectors successfully!'), \
-            self._search_file_hook.handle_response(response)
+               self._search_file_hook.handle_response(response)
 
     @error_handler()
     def delete_by_id(self, collection_name, id_array, timeout=None):

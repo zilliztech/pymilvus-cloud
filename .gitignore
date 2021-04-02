@@ -9,6 +9,7 @@ docs/build/
 /build/
 .remember
 .env
+env
 temp/
 *.swp
 .coverage

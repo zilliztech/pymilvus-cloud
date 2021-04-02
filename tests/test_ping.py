@@ -1,6 +1,6 @@
 import pytest
 
-from milvus import Milvus
+from milvus_cloud import Milvus
 
 
 @pytest.mark.skip

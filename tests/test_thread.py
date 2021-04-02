@@ -7,7 +7,7 @@ import time
 
 sys.path.append('.')
 from factorys import time_it
-from milvus import Milvus
+from milvus_cloud import Milvus
 
 dimension = 512
 number = 100000
